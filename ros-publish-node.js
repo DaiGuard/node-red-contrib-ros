@@ -12,7 +12,8 @@ module.exports = function(RED) {
       return;
     }
 
-    var msgtype = config.typepackage + "/" + config.typename
+    // var msgtype = config.typepackage + "/" + config.typename
+    var msgtype = config.messagetype;
     var topic = new ROSLIB.Topic({
       name : config.topicname,
       messageType : msgtype
@@ -22,7 +23,19 @@ module.exports = function(RED) {
       topic.ros = node.server.ros;
       // node.log('publishing msg ' + msg.payload);
       // var pubslishMsg = new ROSLIB.Message({data: msg.payload});
-      var new_payload = msg.payload;
+      var new_payload = {};
+      if(config.msgpayload){        
+        Object.assign(new_payload, msg.payload);
+      }
+      else{
+        try {
+          const obj = JSON.parse(config.messagedata);
+          Object.assign(new_payload, obj);
+        } catch(e) {
+          // TODO: not support to print console log in node-red
+          console.error(e.message);
+        }
+      }
       // Insert timestamp in header
       if (config.stampheader){
         const now = Time.now();

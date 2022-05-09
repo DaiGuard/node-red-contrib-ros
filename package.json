@@ -15,7 +15,7 @@
       "ros": "ros.js"
     }
   },
-  "author": "Nam Giang",
+  "author": "DaiGuard",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/DaiGuard/node-red-contrib-roslib/issues"
