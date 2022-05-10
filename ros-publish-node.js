@@ -31,9 +31,9 @@ module.exports = function(RED) {
         try {
           const obj = JSON.parse(config.messagedata);
           Object.assign(new_payload, obj);
-        } catch(e) {
-          // TODO: not support to print console log in node-red
-          console.error(e.message);
+        } catch(e) {          
+          node.error('cannot parse json data from message data');
+          node.status({fill:"yellow",shape:"dot",text:"warn"})
         }
       }
       // Insert timestamp in header
@@ -41,7 +41,9 @@ module.exports = function(RED) {
         const now = Time.now();
         new_payload = addHeader(new_payload, now);
       }
-      topic.publish(new_payload);
+
+      var topicmsg = new ROSLIB.Message(new_payload);
+      topic.publish(topicmsg);
     });
 
     function addHeader(payload_, now_)
