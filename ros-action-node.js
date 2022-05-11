@@ -14,6 +14,7 @@ module.exports = function(RED) {
 
     node.on('input', (msg) => {
       var life_check = true;
+      var running = false;
 
       var client = new ROSLIB.ActionClient({
         ros: node.server.ros,
@@ -31,6 +32,8 @@ module.exports = function(RED) {
           const obj = JSON.parse(config.messagedata);
           Object.assign(goalMessage, obj);
         } catch(e) {
+          running = false;
+
           node.error('cannot parse json data from message data');
           node.status({fill:"yellow",shape:"dot",text:"warn"})
         }
@@ -41,10 +44,13 @@ module.exports = function(RED) {
         goalMessage: goalMessage
       });
 
-      // TODO: 処理後にリザルトが来ることがある
       goal.on('result', (result) => {
-        node.status({fill:"green",shape:"dot",text:"finished"});
-        node.send({payload: result});
+        if(running){ 
+          running = false;
+
+          node.status({fill:"green",shape:"dot",text:"finished"});        
+          node.send({payload: result});  
+        }
       });
 
       goal.on('status', (status) => {
@@ -52,14 +58,20 @@ module.exports = function(RED) {
       });
 
       node.status({fill:"blue",shape:"dot",text:"running"});
+      running = true;
       goal.send();
 
-      // TODO: タイムアウトがリザルト後に処理されてしまう
-      setInterval(() => {
+      var intervalID = setInterval(() => {
         if(!life_check){
-          client.cancel();
-          node.status({fill:"red",shape:"dot",text:"unconnected"});
-          node.send({payload: {success: false, message: "server not respoce"}});
+          if(running){
+            running = false;
+
+            client.cancel();
+            node.status({fill:"red",shape:"dot",text:"unconnected"});
+            node.send({payload: {success: false, message: "server not respoce"}});
+
+            clearInterval(intervalID);
+          }
         }
         else{
           life_check = false;
