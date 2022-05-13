@@ -92,20 +92,18 @@
                 value: "",
                 required: true
             },
-            typepackage: {
-                validate: function(v) {
-                    return (window.list_package.indexOf(v) > -1)
-                },
-                required: true
-            },
-            typename: {
-                validate: function(v) {
-                    return (window.list_package.indexOf(this.typepackage) > -1) && (window.list[this.typepackage].indexOf(v) > -1)
-                },
+            messagetype: {
+                value: "",
                 required: true
             },
             stampheader: {
                 value: false
+            },
+            msgpayload: {
+                value: false
+            },
+            messagedata: {
+                value: ""
             }
         },
         inputs:1,
@@ -116,93 +114,8 @@
         label: function() {
             return this.topicname||"ros publish";
         },
-        oneditprepare: function() {
-            var node = this;
-
-            if (!node.typepackage) {
-                node.typepackage = 'std_msgs'
-            }
-
-            if (!node.typename) {
-                node.typename = 'String'
-            }
-
-            $('#node-input-typepackage')
-                .html(window.list_package_html)
-                .val(node.typepackage)
-
-            $('#node-input-typepackage').change(function() {
-                node.typepackage = this.value
-                loadPackage(node.typepackage, node.typename)
-            })
-
-            $('#node-input-typename').change(function() {
-                node.typename = this.value
-                setFormatText(node.typepackage + "/" + node.typename)
-            })
-
-            loadPackage(node.typepackage, node.typename)
-        }
     })
 
-    var loadPackage = function(typepackage, typename) {
-        var ar2 = window.list[typepackage]
-
-        var o = ""
-        for (var i = 0; i < ar2.length; i++) {
-            o += '<option value="' + ar2[i] + '">' + ar2[i] + '</option>'
-        }
-
-        $('#node-input-typename').html(o)
-        $("#node-input-typename")
-            .val(typename)
-
-        setFormatText(typepackage + "/" + typename)
-    }
-
-    $.getJSON('packages', function(list) {
-        window.list = list
-
-        var o = ""
-        var o2 = []
-        for (var key in window.list) {
-            if (window.list.hasOwnProperty(key)) {
-                o += '<option value="' + key + '">' + key + '</option>'
-                o2.push(key)
-            }
-        }
-        window.list_package_html = o
-        window.list_package = o2
-    })
-
-    function setFormatText(package) {
-        $.getJSON('ROSInfo/' + package, function(data) {
-            var v = syntaxHighlight(data)
-            $('#msg_format').html(v)
-        })
-    }
-
-    function syntaxHighlight(json) {
-        if (typeof json != 'string') {
-            json = JSON.stringify(json, undefined, 2);
-        }
-        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
-            var cls = 'number';
-            if (/^"/.test(match)) {
-                if (/:$/.test(match)) {
-                    cls = 'key';
-                } else {
-                    cls = 'string';
-                }
-            } else if (/true|false/.test(match)) {
-                cls = 'boolean';
-            } else if (/null/.test(match)) {
-                cls = 'null';
-            }
-            return '<span class="' + cls + '">' + match + '</span>';
-        });
-    }
 </script>
 
 <script type="text/x-red" data-template-name="ros-publish">
@@ -210,20 +123,16 @@
         <label for="node-input-server"><i class="fa fa-user"></i> ROS Server</label>
         <input type="text" id="node-input-server">
     </div>
+
     <div class="form-row">
         <label for="node-input-topicname">
             <i class="icon-tag"></i> ROS Topic</label>
         <input type="text" id="node-input-topicname" placeholder="/mytopic">
     </div>
 
-    <div class="form-row">
-        <label for="node-input-typepackage">Datatype package</label>
-        <select id="node-input-typepackage"></select>
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-typename">Datatype</label>
-        <select id="node-input-typename"></select>
+    <div class="form-row">        
+        <label for="node-input-messagetype">Message type</label>        
+        <input type="text" id="node-input-messagetype" placeholder="std_msgs/String">
     </div>
 
     <div>
@@ -231,9 +140,172 @@
         <br/><br/>
     </div>
 
-    <h4>Input is expected in the format:</h4>
-    <pre id="msg_format">
-    </pre>
+    <div>
+        <span style="width: 350px; float: left; margin-left: 5px;"><input type="checkbox" id="node-input-msgpayload" placeholder="msgpayload" onchange="use_payload()"> Use message payload</span>
+        <br/><br/>
+    </div>
+
+    <label for="node-input-messagedata">
+        <i class="icon-tag"></i> ROS Message data</label>
+    <textarea id="node-input-messagedata" rows="10" style="width: 100%; resize: none;" placeholder='{ "data": "test" }'></textarea>
+
+    <script type="text/javascript">
+        function use_payload(){
+            checked_msgpayload = document.getElementById("node-input-msgpayload");
+            messagedata = document.getElementById("node-input-messagedata");
+            if(checked_msgpayload.checked) {
+                messagedata.disabled = true;
+            } else {
+                messagedata.disabled = false;
+            }
+        }
+    </script>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('ros-service',{
+        category: 'output',
+        color: '#fef5ff',
+        defaults: {
+            server: {type:"ros-server"},
+            servicename: {
+                value: "",
+                required: true
+            },
+            servicetype: {
+                value: "",
+                required: true
+            },
+            msgpayload: {
+                value: false
+            },
+            messagedata: {
+                value: ""
+            }
+        },
+        inputs:1,
+        outputs:1,
+        align: 'right',
+        paletteLabel: 'ros serv',
+        icon: "icon.png",
+        label: function() {
+            return this.servicename||"ros service";
+        },
+    })
+
+</script>
+
+<script type="text/x-red" data-template-name="ros-service">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-user"></i> ROS Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-servicename">
+            <i class="icon-tag"></i> ROS Service</label>
+        <input type="text" id="node-input-servicename" placeholder="/myservice">
+    </div>
+
+    <div class="form-row">        
+        <label for="node-input-servicetype">Service type</label>        
+        <input type="text" id="node-input-servicetype" placeholder="std_srvs/Empty">
+    </div>
+
+    <div>
+        <span style="width: 350px; float: left; margin-left: 5px;"><input type="checkbox" id="node-input-msgpayload" placeholder="msgpayload" onchange="use_payload()"> Use message payload</span>
+        <br/><br/>
+    </div>
+
+    <label for="node-input-messagedata">
+        <i class="icon-tag"></i> ROS Message data</label>
+    <textarea id="node-input-messagedata" rows="10" style="width: 100%; resize: none;" placeholder='{}'></textarea>
+
+    <script type="text/javascript">
+        function use_payload(){
+            checked_msgpayload = document.getElementById("node-input-msgpayload");
+            messagedata = document.getElementById("node-input-messagedata");
+            if(checked_msgpayload.checked) {
+                messagedata.disabled = true;
+            } else {
+                messagedata.disabled = false;
+            }
+        }
+    </script>
+</script>
+
+
+<script type="text/javascript">
+    RED.nodes.registerType('ros-action',{
+        category: 'output',
+        color: '#fef5ff',
+        defaults: {
+            server: {type:"ros-server"},
+            servername: {
+                value: "",
+                required: true
+            },
+            actionname: {
+                value: "",
+                required: true
+            },
+            msgpayload: {
+                value: false
+            },
+            messagedata: {
+                value: ""
+            }
+        },
+        inputs:1,
+        outputs:1,
+        align: 'right',
+        paletteLabel: 'ros action',
+        icon: "icon.png",
+        label: function() {
+            return this.servername||"ros action";
+        },
+    })
+
+</script>
+
+
+<script type="text/x-red" data-template-name="ros-action">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-user"></i> ROS Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-servername">
+            <i class="icon-tag"></i> ROS Action server name</label>
+        <input type="text" id="node-input-servername" placeholder="/myaction">
+    </div>
+
+    <div class="form-row">        
+        <label for="node-input-actionname">Action name</label>        
+        <input type="text" id="node-input-actionname" placeholder="actionlib/Type">
+    </div>
+
+    <div>
+        <span style="width: 350px; float: left; margin-left: 5px;"><input type="checkbox" id="node-input-msgpayload" placeholder="msgpayload" onchange="use_payload()"> Use message payload</span>
+        <br/><br/>
+    </div>
+
+    <label for="node-input-messagedata">
+        <i class="icon-tag"></i> ROS Message data</label>
+    <textarea id="node-input-messagedata" rows="10" style="width: 100%; resize: none;" placeholder='{ "data": "test" }'></textarea>
+
+    <script type="text/javascript">
+        function use_payload(){
+            checked_msgpayload = document.getElementById("node-input-msgpayload");
+            messagedata = document.getElementById("node-input-messagedata");
+            if(checked_msgpayload.checked) {
+                messagedata.disabled = true;
+            } else {
+                messagedata.disabled = false;
+            }
+        }
+    </script>
 </script>
 
 
@@ -249,11 +321,19 @@
     <p>A node that outputs current ROS time</p>
 </script>
 
+<script type="text/x-red" data-help-name="ros-service">
+    <p>A node that service client to ROS bridge websocket server</p>
+</script>
+
+<script type="text/x-red" data-help-name="ros-action">
+    <p>A node that action client to ROS bridge websocket server</p>
+</script>
+
 <script type="text/javascript">
     RED.nodes.registerType('ros-server',{
         category: 'config',
         defaults: {
-            url: {value:"wss://bennu.magic.ubc.ca:9000/rosws",required:true}
+            url: {value:"ws://127.0.0.1:9090",required:true}
         },
         label: function() {
             return this.url;

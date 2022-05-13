@@ -12,7 +12,8 @@ module.exports = function(RED) {
       return;
     }
 
-    var msgtype = config.typepackage + "/" + config.typename
+    // var msgtype = config.typepackage + "/" + config.typename
+    var msgtype = config.messagetype;
     var topic = new ROSLIB.Topic({
       name : config.topicname,
       messageType : msgtype
@@ -22,13 +23,27 @@ module.exports = function(RED) {
       topic.ros = node.server.ros;
       // node.log('publishing msg ' + msg.payload);
       // var pubslishMsg = new ROSLIB.Message({data: msg.payload});
-      var new_payload = msg.payload;
+      var new_payload = {};
+      if(config.msgpayload){        
+        Object.assign(new_payload, msg.payload);
+      }
+      else{
+        try {
+          const obj = JSON.parse(config.messagedata);
+          Object.assign(new_payload, obj);
+        } catch(e) {          
+          node.error('cannot parse json data from message data');
+          node.status({fill:"yellow",shape:"dot",text:"warn"})
+        }
+      }
       // Insert timestamp in header
       if (config.stampheader){
         const now = Time.now();
         new_payload = addHeader(new_payload, now);
       }
-      topic.publish(new_payload);
+
+      var topicmsg = new ROSLIB.Message(new_payload);
+      topic.publish(topicmsg);
     });
 
     function addHeader(payload_, now_)
